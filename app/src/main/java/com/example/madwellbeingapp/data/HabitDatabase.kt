@@ -4,12 +4,14 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.example.madwellbeingapp.data.dao.HabitDao
 import com.example.madwellbeingapp.data.dao.HabitLogDao
 import com.example.madwellbeingapp.data.model.Habit
 import com.example.madwellbeingapp.data.model.HabitLog
 
 @Database(entities = [Habit::class, HabitLog::class], version = 1, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class HabitDatabase : RoomDatabase() {
 
     abstract fun habitDao(): HabitDao
