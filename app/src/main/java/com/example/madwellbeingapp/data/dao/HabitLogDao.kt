@@ -1,17 +1,16 @@
 package com.example.madwellbeingapp.data.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import com.example.madwellbeingapp.data.model.HabitLog
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HabitLogDao {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(log: HabitLog): Long
+    @Upsert
+    suspend fun upsert(log: HabitLog): Long
 
     @Query("SELECT * FROM habit_logs WHERE habitId = :habitId ORDER BY date DESC")
     fun getLogsForHabit(habitId: Int): Flow<List<HabitLog>>

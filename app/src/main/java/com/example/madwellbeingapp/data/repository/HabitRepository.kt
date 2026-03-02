@@ -1,18 +1,21 @@
 package com.example.madwellbeingapp.data.repository
 
+import com.example.madwellbeingapp.data.dao.ActivityTypeDao
 import com.example.madwellbeingapp.data.dao.HabitDao
 import com.example.madwellbeingapp.data.dao.HabitLogDao
+import com.example.madwellbeingapp.data.model.ActivityType
 import com.example.madwellbeingapp.data.model.Habit
 import com.example.madwellbeingapp.data.model.HabitLog
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Single source of truth for habit and log data.
+ * Single source of truth for habit, log, and activity-type data.
  * Abstracts the data sources away from the ViewModels.
  */
 class HabitRepository(
     private val habitDao: HabitDao,
-    private val habitLogDao: HabitLogDao
+    private val habitLogDao: HabitLogDao,
+    private val activityTypeDao: ActivityTypeDao
 ) {
     // ── Habits ──────────────────────────────────────────────
     val allHabits: Flow<List<Habit>> = habitDao.getAllHabits()
@@ -21,11 +24,27 @@ class HabitRepository(
 
     suspend fun getHabitByIdOnce(id: Int): Habit? = habitDao.getHabitByIdOnce(id)
 
-    suspend fun insertHabit(habit: Habit): Long = habitDao.insert(habit)
+    suspend fun insertHabit(habit: Habit): Long = habitDao.upsert(habit)
 
-    suspend fun updateHabit(habit: Habit) = habitDao.update(habit)
+    suspend fun updateHabit(habit: Habit) = habitDao.upsert(habit)
 
     suspend fun deleteHabit(habit: Habit) = habitDao.delete(habit)
+
+    /** Returns an existing habit with the same name+details (case-insensitive), or null. */
+    suspend fun findDuplicate(name: String, details: String): Habit? =
+        habitDao.findDuplicate(name, details)
+
+    // ── Activity Types ──────────────────────────────────────
+    val allActivityTypes: Flow<List<ActivityType>> = activityTypeDao.getAll()
+
+    suspend fun addActivityType(activityType: ActivityType): Long =
+        activityTypeDao.upsert(activityType)
+
+    suspend fun deleteActivityType(activityType: ActivityType) =
+        activityTypeDao.delete(activityType)
+
+    suspend fun findActivityTypeByName(name: String): ActivityType? =
+        activityTypeDao.findByName(name)
 
     // ── Logs ────────────────────────────────────────────────
     fun getLogsForHabit(habitId: Int): Flow<List<HabitLog>> =
@@ -42,7 +61,7 @@ class HabitRepository(
         if (existing != null) {
             habitLogDao.deleteLogForDate(habitId, date)
         } else {
-            habitLogDao.insert(HabitLog(habitId = habitId, date = date, completed = true))
+            habitLogDao.upsert(HabitLog(habitId = habitId, date = date, completed = true))
         }
     }
 
@@ -52,4 +71,3 @@ class HabitRepository(
     suspend fun getCompletedLogsDesc(habitId: Int): List<HabitLog> =
         habitLogDao.getCompletedLogsDesc(habitId)
 }
-

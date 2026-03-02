@@ -14,7 +14,7 @@ class HabitApp : Application() {
 
     val database by lazy { HabitDatabase.getDatabase(this) }
     val repository by lazy {
-        HabitRepository(database.habitDao(), database.habitLogDao())
+        HabitRepository(database.habitDao(), database.habitLogDao(), database.activityTypeDao())
     }
 
     override fun onCreate() {

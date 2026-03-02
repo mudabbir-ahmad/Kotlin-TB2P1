@@ -11,16 +11,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.core.content.ContextCompat
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import com.example.madwellbeingapp.ui.screens.ActiveOnlyScreen
 import com.example.madwellbeingapp.ui.screens.AddEditHabitScreen
+import com.example.madwellbeingapp.ui.screens.AllActivitiesScreen
 import com.example.madwellbeingapp.ui.screens.HabitDetailScreen
 import com.example.madwellbeingapp.ui.screens.HomeScreen
+import com.example.madwellbeingapp.ui.screens.LandingScreen
 import com.example.madwellbeingapp.ui.theme.MadWellbeingAppTheme
 import com.example.madwellbeingapp.ui.viewmodel.HabitViewModel
 
@@ -35,7 +34,7 @@ class MainActivity : ComponentActivity() {
 
         // Request notification permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -50,55 +49,100 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Simple sealed class representing each screen destination.
+ * We avoid using Navigation Compose library and use manual state-based navigation.
+ */
+sealed class Screen {
+    /** Landing page with 3 navigation buttons — first page the user sees. */
+    data object Landing : Screen()
+    /** All activities — past completed + currently active. */
+    data object AllActivities : Screen()
+    /** Manage activities — add new habits, swipe to complete. */
+    data object Home : Screen()
+    /** Active only — habits still to-do today. */
+    data object ActiveOnly : Screen()
+    data object AddHabit : Screen()
+    data class EditHabit(val habitId: Int) : Screen()
+    data class HabitDetail(val habitId: Int) : Screen()
+}
+
 @Composable
 fun HabitNavGraph(viewModel: HabitViewModel = viewModel()) {
-    val navController = rememberNavController()
+    // Manual back-stack — starts on the Landing screen
+    val backStack = remember { mutableStateListOf<Screen>(Screen.Landing) }
+    val currentScreen = backStack.last()
 
-    NavHost(navController = navController, startDestination = "home") {
+    fun navigateTo(screen: Screen) {
+        backStack.add(screen)
+    }
 
-        composable("home") {
-            HomeScreen(
-                viewModel = viewModel,
-                onAddHabit = { navController.navigate("add_habit") },
-                onHabitClick = { id -> navController.navigate("habit_detail/$id") }
+    fun navigateBack() {
+        if (backStack.size > 1) {
+            backStack.removeAt(backStack.lastIndex)
+        }
+    }
+
+    when (currentScreen) {
+        is Screen.Landing -> {
+            LandingScreen(
+                onAllActivities = { navigateTo(Screen.AllActivities) },
+                onManageActivities = { navigateTo(Screen.Home) },
+                onActiveOnly = { navigateTo(Screen.ActiveOnly) }
             )
         }
 
-        composable("add_habit") {
+        is Screen.AllActivities -> {
+            AllActivitiesScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navigateBack() },
+                onHabitClick = { id -> navigateTo(Screen.HabitDetail(id)) }
+            )
+        }
+
+        is Screen.Home -> {
+            HomeScreen(
+                viewModel = viewModel,
+                onAddHabit = { navigateTo(Screen.AddHabit) },
+                onHabitClick = { id -> navigateTo(Screen.HabitDetail(id)) },
+                onNavigateBack = { navigateBack() }
+            )
+        }
+
+        is Screen.ActiveOnly -> {
+            ActiveOnlyScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navigateBack() },
+                onHabitClick = { id -> navigateTo(Screen.HabitDetail(id)) }
+            )
+        }
+
+        is Screen.AddHabit -> {
             AddEditHabitScreen(
                 viewModel = viewModel,
                 existingHabit = null,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navigateBack() }
             )
         }
 
-        composable(
-            route = "edit_habit/{habitId}",
-            arguments = listOf(navArgument("habitId") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val habitId = backStackEntry.arguments?.getInt("habitId") ?: return@composable
-            // Observe the habit so the form is pre-populated
+        is Screen.EditHabit -> {
             val allHabits by viewModel.allHabits.collectAsState()
-            val habit = allHabits.find { it.id == habitId }
+            val habit = allHabits.find { it.id == currentScreen.habitId }
             if (habit != null) {
                 AddEditHabitScreen(
                     viewModel = viewModel,
                     existingHabit = habit,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navigateBack() }
                 )
             }
         }
 
-        composable(
-            route = "habit_detail/{habitId}",
-            arguments = listOf(navArgument("habitId") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val habitId = backStackEntry.arguments?.getInt("habitId") ?: return@composable
+        is Screen.HabitDetail -> {
             HabitDetailScreen(
-                habitId = habitId,
+                habitId = currentScreen.habitId,
                 viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() },
-                onEditHabit = { id -> navController.navigate("edit_habit/$id") }
+                onNavigateBack = { navigateBack() },
+                onEditHabit = { id -> navigateTo(Screen.EditHabit(id)) }
             )
         }
     }
