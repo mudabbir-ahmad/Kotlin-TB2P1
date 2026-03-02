@@ -76,383 +76,182 @@ fun HabitDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Delete Habit") },
-            text = { Text("Are you sure you want to delete \"${habit!!.displayName}\"? All associated data will be lost.") },
+            text = { Text("Delete \"${habit!!.displayName}\"? All data will be lost.") },
             confirmButton = {
                 TextButton(onClick = {
-                    Log.i("HabitDetail", "User confirmed DELETE for habit '${habit!!.displayName}' (id=${habit!!.id})")
+                    Log.i("HabitDetail", "DELETE '${habit!!.displayName}' id=${habit!!.id}")
                     viewModel.deleteHabit(habit!!)
                     showDeleteDialog = false
                     onNavigateBack()
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
-            }
+            dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") } }
         )
     }
 
     Scaffold { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Custom header bar (replaces TopAppBar which uses material.icons)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "←",
-                            modifier = Modifier
-                                .clickable(onClick = onNavigateBack)
-                                .padding(end = 12.dp),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = habit?.displayName ?: "Habit Detail",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            ScreenHeader(
+                title = habit?.displayName ?: "Habit Detail",
+                onBack = onNavigateBack,
+                trailing = {
                     Row {
-                        Text(
-                            text = "✏️",
-                            modifier = Modifier
-                                .clickable { onEditHabit(habitId) }
-                                .padding(horizontal = 8.dp),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            text = "🗑️",
-                            modifier = Modifier
-                                .clickable { showDeleteDialog = true }
-                                .padding(horizontal = 8.dp),
-                            style = MaterialTheme.typography.titleLarge
-                        )
+                        Text("✏️", modifier = Modifier.clickable { onEditHabit(habitId) }.padding(horizontal = 8.dp),
+                            style = MaterialTheme.typography.titleLarge)
+                        Text("🗑️", modifier = Modifier.clickable { showDeleteDialog = true }.padding(horizontal = 8.dp),
+                            style = MaterialTheme.typography.titleLarge)
                     }
                 }
-            }
+            )
 
             if (habit == null) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Loading…")
-                }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Loading…") }
                 return@Scaffold
             }
 
             val h = habit!!
-            val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+            val fmt = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
 
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Info card
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Card(shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = h.activityType,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Text(h.activityType, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Started: ${dateFormat.format(Date(h.startDate))}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "Target: ${h.targetFrequency}x per week",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text("Started: ${fmt.format(Date(h.startDate))}", style = MaterialTheme.typography.bodyMedium)
+                        Text("Target: ${h.targetFrequency}x per week", style = MaterialTheme.typography.bodyMedium)
                         if (h.reminderEnabled) {
-                            Text(
-                                text = "Reminder: ${h.reminderHour.toString().padStart(2, '0')}:${h.reminderMinute.toString().padStart(2, '0')}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            Text("Reminder: ${h.reminderHour.toString().padStart(2, '0')}:${h.reminderMinute.toString().padStart(2, '0')}",
+                                style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
 
-                // Swipe to mark today as complete (or undo)
-                SwipeToCompleteBar(
-                    isCompletedToday = isCompletedToday,
-                    onSwipeComplete = {
-                        Log.i("HabitDetail", "Swipe-to-complete triggered for habit '${h.displayName}' (id=${h.id}), isUndo=${isCompletedToday}")
-                        viewModel.toggleTodayLog(habitId)
-                    }
-                )
+                // Swipe bar
+                SwipeBar(isCompletedToday) {
+                    Log.i("HabitDetail", "Swipe '${h.displayName}' id=${h.id} undo=$isCompletedToday")
+                    viewModel.toggleTodayLog(habitId)
+                }
 
-                // Streak cards
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard(
-                        title = "🔥 Current Streak",
-                        value = "$currentStreak day${if (currentStreak != 1) "s" else ""}",
-                        modifier = Modifier.weight(1f)
-                    )
-                    StatCard(
-                        title = "🏆 Longest Streak",
-                        value = "$longestStreak day${if (longestStreak != 1) "s" else ""}",
-                        modifier = Modifier.weight(1f)
-                    )
+                // Streaks
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatCard("🔥 Current", "$currentStreak day${if (currentStreak != 1) "s" else ""}", Modifier.weight(1f))
+                    StatCard("🏆 Longest", "$longestStreak day${if (longestStreak != 1) "s" else ""}", Modifier.weight(1f))
                 }
 
                 // Weekly progress
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Card(shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Weekly Progress",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Text("Weekly Progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(12.dp))
-                        LinearProgressIndicator(
-                            progress = { weeklyProgress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(12.dp)
-                                .clip(RoundedCornerShape(6.dp)),
-                        )
+                        LinearProgressIndicator(progress = { weeklyProgress },
+                            modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)))
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "${(weeklyProgress * 100).toInt()}% of weekly goal",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("${(weeklyProgress * 100).toInt()}% of weekly goal",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
-                // Last 14 days heatmap
-                Text(
-                    text = "Last 14 Days",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                val logDates = logs.filter { it.completed }.map { normaliseToDay(it.date) }.toSet()
-                val today = todayStartMillis()
-                val last14 = (0..13).map { today - it * 86_400_000L }.reversed()
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(last14) { dayMillis ->
-                        val completed = logDates.contains(dayMillis)
-                        val dayFormat = SimpleDateFormat("dd", Locale.getDefault())
+                // Last 14 days
+                Text("Last 14 Days", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                val logDates = logs.filter { it.completed }.map { normalise(it.date) }.toSet()
+                val today = todayMillis()
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items((0..13).map { today - it * 86_400_000L }.reversed()) { day ->
+                        val done = logDates.contains(day)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (completed) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surfaceVariant
-                                    ),
+                                modifier = Modifier.size(36.dp).clip(CircleShape).background(
+                                    if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = if (completed) "✓" else "",
-                                    color = if (completed) MaterialTheme.colorScheme.onPrimary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
+                                Text(if (done) "✓" else "",
+                                    color = if (done) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = dayFormat.format(Date(dayMillis)),
-                                style = MaterialTheme.typography.labelSmall,
-                                textAlign = TextAlign.Center
-                            )
+                            Text(SimpleDateFormat("dd", Locale.getDefault()).format(Date(day)),
+                                style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
                         }
                     }
                 }
 
                 // Total completions
-                val totalCompletions = logs.count { it.completed }
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                val total = logs.count { it.completed }
+                Card(shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("📊", style = MaterialTheme.typography.headlineMedium)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(
-                                "Total Completions",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "$totalCompletions time${if (totalCompletions != 1) "s" else ""}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Text("Total Completions", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Text("$total time${if (total != 1) "s" else ""}",
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
-/**
- * Swipe-to-complete bar for the detail screen.
- * User must swipe right past a threshold to toggle completion.
- */
 @Composable
-private fun SwipeToCompleteBar(
-    isCompletedToday: Boolean,
-    onSwipeComplete: () -> Unit
-) {
-    val swipeThreshold = 200f
+private fun SwipeBar(isCompleted: Boolean, onSwipe: () -> Unit) {
+    val threshold = 200f
     var offsetX by remember { mutableFloatStateOf(0f) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .clip(RoundedCornerShape(14.dp))
-    ) {
-        // Background
+    Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(14.dp))) {
         Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    if (isCompletedToday) MaterialTheme.colorScheme.secondaryContainer
-                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                ),
+            modifier = Modifier.matchParentSize().background(
+                if (isCompleted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = if (isCompletedToday) "← Swipe → to Undo"
-                else "← Swipe → to Complete Today",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isCompletedToday) MaterialTheme.colorScheme.onSecondaryContainer
-                else MaterialTheme.colorScheme.primary
-            )
+            Text(if (isCompleted) "Swipe → to Undo" else "Swipe → to Complete",
+                style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
+                color = if (isCompleted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary)
         }
-
-        // Draggable thumb
         Box(
-            modifier = Modifier
-                .size(width = 80.dp, height = 56.dp)
+            modifier = Modifier.size(80.dp, 56.dp)
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .clip(RoundedCornerShape(14.dp))
-                .background(
-                    if (isCompletedToday) MaterialTheme.colorScheme.secondary
-                    else MaterialTheme.colorScheme.primary
-                )
-                .pointerInput(isCompletedToday) {
+                .background(MaterialTheme.colorScheme.primary)
+                .pointerInput(isCompleted) {
                     detectHorizontalDragGestures(
-                        onDragEnd = {
-                            if (offsetX > swipeThreshold) {
-                                Log.d("SwipeGesture", "Detail swipe threshold reached, toggling completion")
-                                onSwipeComplete()
-                            }
-                            offsetX = 0f
-                        },
+                        onDragEnd = { if (offsetX > threshold) onSwipe(); offsetX = 0f },
                         onDragCancel = { offsetX = 0f },
-                        onHorizontalDrag = { _, dragAmount ->
-                            offsetX = (offsetX + dragAmount).coerceIn(0f, swipeThreshold + 50f)
-                        }
-                    )
+                        onHorizontalDrag = { _, d -> offsetX = (offsetX + d).coerceIn(0f, threshold + 50f) })
                 },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = if (isCompletedToday) "✅" else "→",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold
-            )
+            Text(if (isCompleted) "✅" else "→", style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun StatCard(title: String, value: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center
-            )
+    Card(modifier = modifier, shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
-            )
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
         }
     }
 }
 
-private fun normaliseToDay(millis: Long): Long {
-    val cal = Calendar.getInstance()
-    cal.timeInMillis = millis
-    cal.set(Calendar.HOUR_OF_DAY, 0)
-    cal.set(Calendar.MINUTE, 0)
-    cal.set(Calendar.SECOND, 0)
-    cal.set(Calendar.MILLISECOND, 0)
-    return cal.timeInMillis
+private fun normalise(millis: Long): Long {
+    val c = Calendar.getInstance(); c.timeInMillis = millis
+    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+    return c.timeInMillis
 }
 
-private fun todayStartMillis(): Long {
-    val cal = Calendar.getInstance()
-    cal.set(Calendar.HOUR_OF_DAY, 0)
-    cal.set(Calendar.MINUTE, 0)
-    cal.set(Calendar.SECOND, 0)
-    cal.set(Calendar.MILLISECOND, 0)
-    return cal.timeInMillis
+private fun todayMillis(): Long {
+    val c = Calendar.getInstance()
+    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+    return c.timeInMillis
 }
