@@ -5,7 +5,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,9 +21,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,6 +55,9 @@ fun HomeScreen(
     val completedIds = todayLogs.filter { it.completed }.map { it.habitId }.toSet()
     val activeHabits = habits.filter { it.isActive }
 
+    // Toggle between "Week" and "Month" view for the progress dropdown
+    var showMonth by remember { mutableStateOf(false) }
+
     Scaffold { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ScreenHeader(title = "Manage Activities", onBack = onNavigateBack)
@@ -76,6 +80,25 @@ fun HomeScreen(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
+                // Week / Month toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (showMonth) "Showing: Month" else "Showing: Week",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    TextButton(onClick = { showMonth = !showMonth }) {
+                        Text(
+                            if (showMonth) "Switch to Week ▲" else "Expand to Month ▼",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
 
             if (activeHabits.isEmpty()) {
@@ -104,7 +127,8 @@ fun HomeScreen(
                             onSwipeRight = { viewModel.toggleTodayLog(habit.id) },
                             onSwipeLeft = { viewModel.disableHabit(habit) },
                             onClick = { onHabitClick(habit.id) },
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            showMonth = showMonth
                         )
                     }
                 }
@@ -123,13 +147,27 @@ fun HomeScreen(
     }
 }
 
-/** Habit card with swipe-right-to-complete, swipe-left-to-disable, and a − button. */
+/**
+ * Habit card:
+ *  • swipe left→right = mark complete (or undo)
+ *  • swipe right→left = disable
+ *  • streak counter (✓ per consecutive day) replaces the old − button
+ */
 @Composable
 private fun SwipeHabitCard(
     habit: Habit, completed: Boolean, onSwipeRight: () -> Unit,
-    onSwipeLeft: () -> Unit, onClick: () -> Unit, viewModel: HabitViewModel
+    onSwipeLeft: () -> Unit, onClick: () -> Unit, viewModel: HabitViewModel,
+    showMonth: Boolean
 ) {
-    val weeklyProgress by viewModel.weeklyProgress(habit.id).collectAsState(initial = 0f)
+    val progress by (if (showMonth) viewModel.monthlyProgress(habit.id)
+    else viewModel.weeklyProgress(habit.id)).collectAsState(initial = 0f)
+
+    // Streak counter
+    var streak by remember { mutableIntStateOf(0) }
+    LaunchedEffect(habit.id, completed) {
+        streak = viewModel.computeStreakForHabit(habit.id)
+    }
+
     val threshold = 150f
     var offsetX by remember { mutableStateOf(0f) }
 
@@ -208,20 +246,27 @@ private fun SwipeHabitCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "Weekly: ${(weeklyProgress * 100).toInt()}%",
+                            "${if (showMonth) "Monthly" else "Weekly"}: ${(progress * 100).toInt()}%",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // Minus button for quick disable
-                    Button(
-                        onClick = onSwipeLeft,
-                        modifier = Modifier.size(36.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("−", style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold)
+                    // Streak counter – show ✓ per consecutive day (max 7 visible)
+                    val visibleStreak = streak.coerceAtMost(7)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "✓".repeat(visibleStreak) + if (streak > 7) "+" else "",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (streak > 0) {
+                            Text(
+                                "${streak}d streak",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -231,7 +276,7 @@ private fun SwipeHabitCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
                     } else {
-                        Text("→ undo",
+                        Text("→ undo  ← disable",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
                     }

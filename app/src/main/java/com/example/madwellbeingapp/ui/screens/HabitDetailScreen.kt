@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,29 +50,11 @@ fun HabitDetailScreen(
     val logs by viewModel.selectedHabitLogs.collectAsState()
     val currentStreak by viewModel.currentStreak.collectAsState()
     val longestStreak by viewModel.longestStreak.collectAsState()
-    val weeklyProgress by viewModel.weeklyProgress(habitId).collectAsState(initial = 0f)
     val todayLogs by viewModel.todayLogs.collectAsState()
     val isCompletedToday = todayLogs.any { it.habitId == habitId && it.completed }
 
-    var showDisableDialog by remember { mutableStateOf(false) }
+    var showMonth by remember { mutableStateOf(false) }
 
-    if (showDisableDialog && habit != null) {
-        AlertDialog(
-            onDismissRequest = { showDisableDialog = false },
-            title = { Text("Disable Habit") },
-            text = { Text("Disable \"${habit!!.displayName}\"? It will be greyed out but data is kept.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.disableHabit(habit!!)
-                    showDisableDialog = false
-                    onNavigateBack()
-                }) { Text("Disable", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDisableDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
 
     Scaffold { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -81,21 +62,8 @@ fun HabitDetailScreen(
                 title = habit?.displayName ?: "Habit Detail",
                 onBack = onNavigateBack,
                 trailing = {
-                    Row {
-                        TextButton(onClick = { onEditHabit(habitId) }) {
-                            Text("Edit", color = MaterialTheme.colorScheme.onPrimary)
-                        }
-                        if (habit?.isActive == true) {
-                            TextButton(onClick = { showDisableDialog = true }) {
-                                Text("−", color = MaterialTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.Bold)
-                            }
-                        } else {
-                            TextButton(onClick = { if (habit != null) viewModel.enableHabit(habit!!) }) {
-                                Text("+", color = MaterialTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.Bold)
-                            }
-                        }
+                    TextButton(onClick = { onEditHabit(habitId) }) {
+                        Text("Edit", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             )
@@ -156,15 +124,35 @@ fun HabitDetailScreen(
                         Modifier.weight(1f))
                 }
 
-                // Weekly progress
+                // Weekly/Monthly progress with toggle
                 Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Weekly Progress", style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("${(weeklyProgress * 100).toInt()}% of weekly goal",
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                if (showMonth) "Monthly Progress" else "Weekly Progress",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            TextButton(onClick = { showMonth = !showMonth }) {
+                                Text(
+                                    if (showMonth) "Week ▲" else "Month ▼",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        val detailProgress by (if (showMonth) viewModel.monthlyProgress(habitId)
+                        else viewModel.weeklyProgress(habitId)).collectAsState(initial = 0f)
+                        Text(
+                            "${(detailProgress * 100).toInt()}% of ${if (showMonth) "monthly" else "weekly"} goal",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 

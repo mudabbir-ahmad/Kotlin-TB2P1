@@ -179,6 +179,18 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ── Monthly progress for a habit ────────────────────────
+    fun monthlyProgress(habitId: Int): Flow<Float> {
+        return repository.getLogsForHabit(habitId).map { logs ->
+            val monthAgo = todayStart - 29 * 86_400_000L
+            val thisMonthCount = logs.count { it.completed && it.date >= monthAgo }
+            val habit = repository.getHabitByIdOnce(habitId)
+            val weeklyTarget = habit?.targetFrequency ?: 7
+            val monthlyTarget = (weeklyTarget * 4.3).toInt().coerceAtLeast(1)
+            (thisMonthCount.toFloat() / monthlyTarget).coerceIn(0f, 1f)
+        }
+    }
+
     // ── Duplicate check ─────────────────────────────────────
     suspend fun isDuplicate(name: String, details: String, excludeId: Int? = null): Boolean {
         val existing = repository.findDuplicate(name.trim(), details.trim())
