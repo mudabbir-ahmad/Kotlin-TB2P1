@@ -32,7 +32,8 @@ import androidx.compose.ui.unit.dp
 fun LandingScreen(
     onAllActivities: () -> Unit,
     onManageActivities: () -> Unit,
-    onActiveOnly: () -> Unit
+    onActiveOnly: () -> Unit,
+    onCalendar: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -69,6 +70,8 @@ fun LandingScreen(
             LandingButton("Manage Activities", onManageActivities)
             Spacer(modifier = Modifier.height(16.dp))
             LandingButton("Active Only", onActiveOnly)
+            Spacer(modifier = Modifier.height(16.dp))
+            LandingButton("Calendar", onCalendar)
         }
     }
 }

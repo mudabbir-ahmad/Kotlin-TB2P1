@@ -1,7 +1,6 @@
 package com.example.madwellbeingapp.data.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Query
 import androidx.room.Upsert
 import com.example.madwellbeingapp.data.model.ActivityType
@@ -13,8 +12,6 @@ interface ActivityTypeDao {
     @Upsert
     suspend fun upsert(activityType: ActivityType): Long
 
-    @Delete
-    suspend fun delete(activityType: ActivityType): Int
 
     @Query("SELECT * FROM activity_types ORDER BY name ASC")
     fun getAll(): Flow<List<ActivityType>>

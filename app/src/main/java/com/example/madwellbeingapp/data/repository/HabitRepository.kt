@@ -28,7 +28,6 @@ class HabitRepository(
 
     suspend fun updateHabit(habit: Habit) = habitDao.upsert(habit)
 
-    suspend fun deleteHabit(habit: Habit) = habitDao.delete(habit)
 
     /** Returns an existing habit with the same name+details (case-insensitive), or null. */
     suspend fun findDuplicate(name: String, details: String): Habit? =
@@ -40,8 +39,6 @@ class HabitRepository(
     suspend fun addActivityType(activityType: ActivityType): Long =
         activityTypeDao.upsert(activityType)
 
-    suspend fun deleteActivityType(activityType: ActivityType) =
-        activityTypeDao.delete(activityType)
 
     suspend fun findActivityTypeByName(name: String): ActivityType? =
         activityTypeDao.findByName(name)
@@ -70,4 +67,7 @@ class HabitRepository(
 
     suspend fun getCompletedLogsDesc(habitId: Int): List<HabitLog> =
         habitLogDao.getCompletedLogsDesc(habitId)
+
+    fun getLogsBetween(startDate: Long, endDate: Long): Flow<List<HabitLog>> =
+        habitLogDao.getLogsBetween(startDate, endDate)
 }

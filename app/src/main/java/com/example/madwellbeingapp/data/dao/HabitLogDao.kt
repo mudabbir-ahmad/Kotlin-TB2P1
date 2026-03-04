@@ -29,4 +29,7 @@ interface HabitLogDao {
 
     @Query("SELECT * FROM habit_logs WHERE date = :date")
     fun getLogsForDate(date: Long): Flow<List<HabitLog>>
+
+    @Query("SELECT * FROM habit_logs WHERE date >= :startDate AND date <= :endDate AND completed = 1")
+    fun getLogsBetween(startDate: Long, endDate: Long): Flow<List<HabitLog>>
 }

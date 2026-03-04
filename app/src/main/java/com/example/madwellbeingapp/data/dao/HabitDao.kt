@@ -1,7 +1,6 @@
 package com.example.madwellbeingapp.data.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Query
 import androidx.room.Upsert
 import com.example.madwellbeingapp.data.model.Habit
@@ -13,8 +12,6 @@ interface HabitDao {
     @Upsert
     suspend fun upsert(habit: Habit): Long
 
-    @Delete
-    suspend fun delete(habit: Habit): Int
 
     @Query("SELECT * FROM habits ORDER BY name ASC")
     fun getAllHabits(): Flow<List<Habit>>

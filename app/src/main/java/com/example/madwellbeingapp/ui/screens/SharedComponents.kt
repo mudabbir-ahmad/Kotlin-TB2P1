@@ -1,7 +1,6 @@
 package com.example.madwellbeingapp.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,30 +11,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.madwellbeingapp.data.model.Habit
 import com.example.madwellbeingapp.ui.viewmodel.HabitViewModel
 
-// ─────────────────────────────────────────────────────────────
-// Reusable composables shared across multiple screens.
-// ─────────────────────────────────────────────────────────────
-
-/** Standard header bar with a ← back button and a title. */
+/** Standard header bar with a back button and a title. */
 @Composable
 fun ScreenHeader(
     title: String,
@@ -46,7 +37,7 @@ fun ScreenHeader(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
-            .padding(horizontal = 16.dp, vertical = 16.dp)
+            .padding(horizontal = 8.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -54,15 +45,14 @@ fun ScreenHeader(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "←",
-                    modifier = Modifier
-                        .clickable(onClick = onBack)
-                        .padding(end = 12.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold
-                )
+                TextButton(onClick = onBack) {
+                    Text(
+                        text = "←",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
@@ -77,45 +67,39 @@ fun ScreenHeader(
 
 /**
  * Standard habit card used on list screens.
- *
- * Shows a status circle, display name, activity type, frequency, and
- * a weekly progress bar. Customisable via [circleColor], [circleText],
- * and [containerColor].
  */
 @Composable
 fun HabitCard(
     habit: Habit,
     viewModel: HabitViewModel,
     onClick: () -> Unit,
-    circleColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    circleColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
     circleText: String = "",
-    circleTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
-    badge: @Composable (() -> Unit)? = null
+    circleTextColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surface,
+    contentAlpha: Float = 1f,
+    badge: @Composable (() -> Unit)? = null,
+    trailing: @Composable (() -> Unit)? = null
 ) {
     val weeklyProgress by viewModel.weeklyProgress(habit.id)
         .collectAsState(initial = 0f)
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status circle
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(circleColor),
+                modifier = Modifier.size(44.dp)
+                    .background(
+                        circleColor.copy(alpha = contentAlpha),
+                        shape = androidx.compose.foundation.shape.CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -133,7 +117,8 @@ fun HabitCard(
                     Text(
                         text = habit.displayName,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha)
                     )
                     if (badge != null) {
                         Spacer(modifier = Modifier.width(8.dp))
@@ -144,26 +129,20 @@ fun HabitCard(
                 Text(
                     text = habit.activityType + "  •  ${habit.targetFrequency}x/week",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { weeklyProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Weekly: ${(weeklyProgress * 100).toInt()}%",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f * contentAlpha)
                 )
+            }
+
+            if (trailing != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                trailing()
             }
         }
     }
 }
-
