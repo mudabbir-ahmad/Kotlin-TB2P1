@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * Single source of truth for habit, log, and activity-type data.
- * Abstracts the data sources away from the ViewModels.
+ * Abstracts the DAOs away from the ViewModel.
  */
 class HabitRepository(
     private val habitDao: HabitDao,
@@ -24,21 +24,15 @@ class HabitRepository(
 
     suspend fun getHabitByIdOnce(id: Int): Habit? = habitDao.getHabitByIdOnce(id)
 
-    suspend fun insertHabit(habit: Habit): Long = habitDao.upsert(habit)
+    suspend fun upsertHabit(habit: Habit): Long = habitDao.upsert(habit)
 
-    suspend fun updateHabit(habit: Habit) = habitDao.upsert(habit)
-
-
-    /** Returns an existing habit with the same name+details (case-insensitive), or null. */
     suspend fun findDuplicate(name: String, details: String): Habit? =
         habitDao.findDuplicate(name, details)
 
     // ── Activity Types ──────────────────────────────────────
     val allActivityTypes: Flow<List<ActivityType>> = activityTypeDao.getAll()
 
-    suspend fun addActivityType(activityType: ActivityType): Long =
-        activityTypeDao.upsert(activityType)
-
+    suspend fun addActivityType(type: ActivityType): Long = activityTypeDao.upsert(type)
 
     suspend fun findActivityTypeByName(name: String): ActivityType? =
         activityTypeDao.findByName(name)
@@ -50,20 +44,14 @@ class HabitRepository(
     fun getLogsForDate(date: Long): Flow<List<HabitLog>> =
         habitLogDao.getLogsForDate(date)
 
-    suspend fun getLogForDate(habitId: Int, date: Long): HabitLog? =
-        habitLogDao.getLogForDate(habitId, date)
-
     suspend fun toggleLog(habitId: Int, date: Long) {
         val existing = habitLogDao.getLogForDate(habitId, date)
         if (existing != null) {
             habitLogDao.deleteLogForDate(habitId, date)
         } else {
-            habitLogDao.upsert(HabitLog(habitId = habitId, date = date, completed = true))
+            habitLogDao.upsert(HabitLog(habitId = habitId, date = date))
         }
     }
-
-    fun getCompletedCount(habitId: Int): Flow<Int> =
-        habitLogDao.getCompletedCount(habitId)
 
     suspend fun getCompletedLogsDesc(habitId: Int): List<HabitLog> =
         habitLogDao.getCompletedLogsDesc(habitId)

@@ -1,6 +1,7 @@
 package com.example.madwellbeingapp.ui.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.madwellbeingapp.HabitApp
@@ -22,89 +23,71 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+private const val TAG = "HabitViewModel"
+private const val DAY_MS = 86_400_000L
+
 class HabitViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: HabitRepository =
         (application as HabitApp).repository
 
+    // ── Text formatting helpers (static) ────────────────────
     companion object {
-        /**
-         * Formats the activity name: FULL CAPS for the main name.
-         * e.g. "gym" → "GYM", "running" → "RUNNING"
-         */
-        fun formatName(input: String): String {
-            return input.trim().uppercase()
-        }
+        /** Activity name → FULL CAPS.  "gym" → "GYM" */
+        fun formatName(input: String): String = input.trim().uppercase()
 
-        /**
-         * Formats the details/type text: first character uppercase, rest lowercase.
-         * e.g. "LEGS" → "Legs", "upper body" → "Upper body"
-         */
+        /** Detail text → first char upper, rest lower.  "LEGS" → "Legs" */
         fun formatDetails(input: String): String {
-            val trimmed = input.trim()
-            if (trimmed.isBlank()) return trimmed
-            return trimmed[0].uppercaseChar() + trimmed.substring(1).lowercase()
+            val t = input.trim()
+            if (t.isBlank()) return t
+            return t[0].uppercaseChar() + t.substring(1).lowercase()
         }
 
-        /**
-         * Legacy helper – kept for activity type names which use title-case.
-         * Converts text so first character is uppercase, rest lowercase.
-         */
-        fun toTitleCase(input: String): String {
-            return formatDetails(input)
+        /** Normalise epoch millis to the start-of-day (00:00:00.000). */
+        fun startOfDay(millis: Long): Long {
+            val c = Calendar.getInstance()
+            c.timeInMillis = millis
+            c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0)
+            c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+            return c.timeInMillis
         }
+
+        /** Today at 00:00:00.000. */
+        fun todayMillis(): Long = startOfDay(System.currentTimeMillis())
     }
 
-    // ── Activity Types (user-created, stored in Room) ───────
+    // ── Activity Types ──────────────────────────────────────
     val allActivityTypes: StateFlow<List<ActivityType>> = repository.allActivityTypes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /**
-     * Adds a new activity type. [onResult] returns true on success, false if duplicate.
-     */
     fun addActivityType(name: String, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            val formatted = formatName(name.trim())
-            if (formatted.isBlank()) {
-                onResult(false)
-                return@launch
-            }
-            val existing = repository.findActivityTypeByName(formatted)
-            if (existing != null) {
-                onResult(false)
-                return@launch
+            val formatted = formatName(name)
+            if (formatted.isBlank()) { onResult(false); return@launch }
+            if (repository.findActivityTypeByName(formatted) != null) {
+                onResult(false); return@launch
             }
             repository.addActivityType(ActivityType(name = formatted))
+            Log.d(TAG, "Activity type created: $formatted")
             onResult(true)
         }
     }
-
 
     // ── All habits ──────────────────────────────────────────
     val allHabits: StateFlow<List<Habit>> = repository.allHabits
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ── Today's logs ────────────────────────────────────────
-    private val todayStart: Long
-        get() {
-            val cal = Calendar.getInstance()
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-            return cal.timeInMillis
-        }
+    private val todayStart: Long get() = todayMillis()
 
     val todayLogs: StateFlow<List<HabitLog>> = repository.getLogsForDate(todayStart)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /**
-     * Active habits still to-do today.
-     */
+    /** Active habits not yet completed today. */
     val activeHabitsNotCompletedToday: StateFlow<List<Habit>> =
         combine(allHabits, todayLogs) { habits, logs ->
-            val completedIds = logs.filter { it.completed }.map { it.habitId }.toSet()
-            habits.filter { it.isActive && !completedIds.contains(it.id) }
+            val doneIds = logs.filter { it.completed }.map { it.habitId }.toSet()
+            habits.filter { it.isActive && it.id !in doneIds }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ── Selected habit detail ───────────────────────────────
@@ -112,19 +95,15 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedHabit: StateFlow<Habit?> = _selectedHabitId
-        .flatMapLatest { id ->
-            if (id != null) repository.getHabitById(id) else flowOf(null)
-        }
+        .flatMapLatest { id -> if (id != null) repository.getHabitById(id) else flowOf(null) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedHabitLogs: StateFlow<List<HabitLog>> = _selectedHabitId
-        .flatMapLatest { id ->
-            if (id != null) repository.getLogsForHabit(id) else flowOf(emptyList())
-        }
+        .flatMapLatest { id -> if (id != null) repository.getLogsForHabit(id) else flowOf(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // ── Streak for selected habit ───────────────────────────
+    // ── Streaks ─────────────────────────────────────────────
     private val _currentStreak = MutableStateFlow(0)
     val currentStreak: StateFlow<Int> = _currentStreak.asStateFlow()
 
@@ -134,62 +113,56 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
     fun selectHabit(habitId: Int) {
         _selectedHabitId.value = habitId
         viewModelScope.launch {
-            val (current, longest) = computeStreakPair(habitId)
-            _currentStreak.value = current
-            _longestStreak.value = longest
+            val (cur, lng) = computeStreaks(habitId)
+            _currentStreak.value = cur
+            _longestStreak.value = lng
         }
     }
 
-    /** Returns (currentStreak, longestStreak) for a habit. */
-    private suspend fun computeStreakPair(habitId: Int): Pair<Int, Int> {
+    suspend fun computeStreakForHabit(habitId: Int): Int = computeStreaks(habitId).first
+
+    private suspend fun computeStreaks(habitId: Int): Pair<Int, Int> {
         val logs = repository.getCompletedLogsDesc(habitId)
         if (logs.isEmpty()) return 0 to 0
-        val days = logs.map { normaliseToDay(it.date) }.distinct().sortedDescending()
+        val days = logs.map { startOfDay(it.date) }.distinct().sortedDescending()
+
         // Current streak
         var current = 0
         val today = todayStart
-        if (days.first() == today || days.first() == today - 86_400_000L) {
+        if (days.first() == today || days.first() == today - DAY_MS) {
             var expected = days.first()
             for (day in days) {
-                if (day == expected) { current++; expected -= 86_400_000L } else break
+                if (day == expected) { current++; expected -= DAY_MS } else break
             }
         }
         // Longest streak
-        var longest = 1; var streak = 1
+        var longest = 1; var run = 1
         for (i in 1 until days.size) {
-            if (days[i] == days[i - 1] - 86_400_000L) {
-                streak++; if (streak > longest) longest = streak
-            } else streak = 1
+            if (days[i] == days[i - 1] - DAY_MS) { run++; if (run > longest) longest = run }
+            else run = 1
         }
         return current to longest
     }
 
-    /** Public accessor for calendar/other screens needing just current streak. */
-    suspend fun computeStreakForHabit(habitId: Int): Int = computeStreakPair(habitId).first
-
-    // ── Weekly progress for a habit ─────────────────────────
-    fun weeklyProgress(habitId: Int): Flow<Float> {
-        return repository.getLogsForHabit(habitId).map { logs ->
-            val weekAgo = todayStart - 6 * 86_400_000L
-            val thisWeekCount = logs.count { it.completed && it.date >= weekAgo }
-            val habit = repository.getHabitByIdOnce(habitId)
-            val target = habit?.targetFrequency ?: 7
-            (thisWeekCount.toFloat() / target).coerceIn(0f, 1f)
+    // ── Weekly progress ─────────────────────────────────────
+    fun weeklyProgress(habitId: Int): Flow<Float> =
+        repository.getLogsForHabit(habitId).map { logs ->
+            val weekAgo = todayStart - 6 * DAY_MS
+            val count = logs.count { it.completed && it.date >= weekAgo }
+            val target = repository.getHabitByIdOnce(habitId)?.targetFrequency ?: 7
+            (count.toFloat() / target).coerceIn(0f, 1f)
         }
-    }
 
     // ── Duplicate check ─────────────────────────────────────
-    suspend fun isDuplicate(name: String, details: String, excludeId: Int? = null): Boolean {
-        val existing = repository.findDuplicate(name.trim(), details.trim())
+    private suspend fun isDuplicate(name: String, details: String, excludeId: Int? = null): Boolean {
+        val existing = repository.findDuplicate(name, details)
         return existing != null && existing.id != excludeId
     }
 
-    // ── CRUD operations ─────────────────────────────────────
-
+    // ── CRUD ────────────────────────────────────────────────
     fun addHabit(
         name: String,
         details: String = "",
-        activityType: String = "",
         targetFrequency: Int,
         reminderEnabled: Boolean = true,
         reminderHour: Int = 9,
@@ -197,77 +170,58 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
         onResult: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
-            val formattedName = formatName(name.trim())
-            val formattedDetails = formatDetails(details.trim())
-            val formattedType = formatName(activityType.trim())
+            val fmtName = formatName(name)
+            val fmtDetails = formatDetails(details)
 
-            if (isDuplicate(formattedName, formattedDetails)) {
-                onResult(false)
-                return@launch
-            }
+            if (isDuplicate(fmtName, fmtDetails)) { onResult(false); return@launch }
 
-            val habit = Habit(
-                name = formattedName,
-                details = formattedDetails,
-                activityType = formattedType,
-                startDate = System.currentTimeMillis(),
-                targetFrequency = targetFrequency,
-                reminderEnabled = reminderEnabled,
-                reminderHour = reminderHour,
-                reminderMinute = reminderMinute
+            repository.upsertHabit(
+                Habit(
+                    name = fmtName, details = fmtDetails,
+                    startDate = System.currentTimeMillis(),
+                    targetFrequency = targetFrequency,
+                    reminderEnabled = reminderEnabled,
+                    reminderHour = reminderHour, reminderMinute = reminderMinute
+                )
             )
-            repository.insertHabit(habit)
+            Log.d(TAG, "Habit created: $fmtName($fmtDetails)")
             onResult(true)
         }
     }
 
     fun updateHabit(habit: Habit) {
         viewModelScope.launch {
-            val updated = habit.copy(
-                name = formatName(habit.name.trim()),
-                details = formatDetails(habit.details.trim()),
-                activityType = formatName(habit.activityType.trim())
+            repository.upsertHabit(
+                habit.copy(
+                    name = formatName(habit.name),
+                    details = formatDetails(habit.details)
+                )
             )
-            repository.updateHabit(updated)
+            Log.d(TAG, "Habit updated: ${habit.displayName}")
         }
     }
 
     fun disableHabit(habit: Habit) {
-        viewModelScope.launch {
-            val updated = habit.copy(isActive = false)
-            repository.updateHabit(updated)
-        }
+        viewModelScope.launch { repository.upsertHabit(habit.copy(isActive = false)) }
     }
 
     fun enableHabit(habit: Habit) {
-        viewModelScope.launch {
-            val updated = habit.copy(isActive = true)
-            repository.updateHabit(updated)
-        }
+        viewModelScope.launch { repository.upsertHabit(habit.copy(isActive = true)) }
     }
 
     // ── Daily logging ───────────────────────────────────────
     fun toggleTodayLog(habitId: Int) {
         viewModelScope.launch {
             repository.toggleLog(habitId, todayStart)
+            Log.d(TAG, "Toggled today's log for habit id=$habitId")
             if (_selectedHabitId.value == habitId) {
-                val (c, l) = computeStreakPair(habitId)
-                _currentStreak.value = c
-                _longestStreak.value = l
+                val (c, l) = computeStreaks(habitId)
+                _currentStreak.value = c; _longestStreak.value = l
             }
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────
-    private fun normaliseToDay(millis: Long): Long {
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = millis
-        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
-    }
-
     // ── Calendar support ────────────────────────────────────
-    fun getLogsBetween(startDate: Long, endDate: Long): Flow<List<HabitLog>> =
-        repository.getLogsBetween(startDate, endDate)
+    fun getLogsBetween(start: Long, end: Long): Flow<List<HabitLog>> =
+        repository.getLogsBetween(start, end)
 }

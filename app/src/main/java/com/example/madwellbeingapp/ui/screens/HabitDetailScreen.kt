@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.madwellbeingapp.ui.viewmodel.HabitViewModel
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -84,7 +83,7 @@ fun HabitDetailScreen(
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(h.activityType, style = MaterialTheme.typography.labelLarge,
+                        Text(h.name, style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text("Started: ${fmt.format(Date(h.startDate))}",
@@ -141,8 +140,8 @@ fun HabitDetailScreen(
                 // Last 14 days
                 Text("Last 14 Days", style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold)
-                val logDates = logs.filter { it.completed }.map { normalise(it.date) }.toSet()
-                val today = todayMillis()
+                val logDates = logs.filter { it.completed }.map { HabitViewModel.startOfDay(it.date) }.toSet()
+                val today = HabitViewModel.todayMillis()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -212,16 +211,3 @@ private fun StatCard(title: String, value: String, modifier: Modifier = Modifier
     }
 }
 
-private fun normalise(millis: Long): Long {
-    val c = Calendar.getInstance(); c.timeInMillis = millis
-    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0)
-    c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
-    return c.timeInMillis
-}
-
-private fun todayMillis(): Long {
-    val c = Calendar.getInstance()
-    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0)
-    c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
-    return c.timeInMillis
-}

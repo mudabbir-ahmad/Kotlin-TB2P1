@@ -52,9 +52,8 @@ fun ActiveOnlyScreen(
                     items(activeHabits, key = { it.id }) { habit ->
                         HabitCard(
                             habit = habit,
-                            viewModel = viewModel,
                             onClick = { onHabitClick(habit.id) },
-                            circleText = if (habit.activityType.isNotBlank()) habit.activityType.first().toString() else "•",
+                            circleText = if (habit.name.isNotBlank()) habit.name.first().toString() else "•",
                             circleTextColor = MaterialTheme.colorScheme.primary
                         )
                     }

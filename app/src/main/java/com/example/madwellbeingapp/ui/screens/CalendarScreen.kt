@@ -74,7 +74,7 @@ fun CalendarScreen(
     val dayCompletionMap = remember(monthLogs) {
         val map = mutableMapOf<Long, MutableSet<Int>>() // dayMillis -> set of habitIds
         for (log in monthLogs) {
-            val dayMillis = normaliseDay(log.date)
+            val dayMillis = HabitViewModel.startOfDay(log.date)
             map.getOrPut(dayMillis) { mutableSetOf() }.add(log.habitId)
         }
         map
@@ -173,7 +173,7 @@ fun CalendarScreen(
                                 dayCal.set(Calendar.MILLISECOND, 0)
                                 val dayMillis = dayCal.timeInMillis
                                 val count = dayCompletionMap[dayMillis]?.size ?: 0
-                                val today = isToday(dayMillis)
+                                val today = dayMillis == HabitViewModel.todayMillis()
                                 val intensity = if (totalActive > 0) (count.toFloat() / totalActive).coerceIn(0f, 1f) else 0f
 
                                 Box(
@@ -312,16 +312,3 @@ private fun StreakCard(habit: Habit, streak: Int, onClick: () -> Unit) {
     }
 }
 
-private fun normaliseDay(millis: Long): Long {
-    val c = Calendar.getInstance(); c.timeInMillis = millis
-    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0)
-    c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
-    return c.timeInMillis
-}
-
-private fun isToday(millis: Long): Boolean {
-    val todayCal = Calendar.getInstance()
-    todayCal.set(Calendar.HOUR_OF_DAY, 0); todayCal.set(Calendar.MINUTE, 0)
-    todayCal.set(Calendar.SECOND, 0); todayCal.set(Calendar.MILLISECOND, 0)
-    return millis == todayCal.timeInMillis
-}

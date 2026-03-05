@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.madwellbeingapp.data.model.Habit
-import com.example.madwellbeingapp.ui.viewmodel.HabitViewModel
 
 /** Standard header bar with a back button and a title. */
 @Composable
@@ -69,7 +68,6 @@ fun ScreenHeader(
 @Composable
 fun HabitCard(
     habit: Habit,
-    viewModel: HabitViewModel,
     onClick: () -> Unit,
     circleColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
     circleText: String = "",

@@ -327,12 +327,11 @@ fun AddEditHabitScreen(
                         if (selectedActivityName.isBlank()) { nameError = true; return@Button }
                         val freq = targetFrequency.toIntOrNull() ?: 7
 
-                        if (isEditing) {
+                        if (existingHabit != null) {
                             viewModel.updateHabit(
-                                existingHabit!!.copy(
+                                existingHabit.copy(
                                     name = selectedActivityName.trim(),
                                     details = details.trim(),
-                                    activityType = selectedActivityName.trim(),
                                     targetFrequency = freq,
                                     reminderEnabled = reminderEnabled,
                                     reminderHour = reminderHour,
@@ -344,7 +343,6 @@ fun AddEditHabitScreen(
                             viewModel.addHabit(
                                 name = selectedActivityName.trim(),
                                 details = details.trim(),
-                                activityType = selectedActivityName.trim(),
                                 targetFrequency = freq,
                                 reminderEnabled = reminderEnabled,
                                 reminderHour = reminderHour,
