@@ -18,7 +18,7 @@ import com.example.madwellbeingapp.ui.screens.AllActivitiesScreen
 import com.example.madwellbeingapp.ui.screens.CalendarScreen
 import com.example.madwellbeingapp.ui.screens.HabitDetailScreen
 import com.example.madwellbeingapp.ui.screens.HomeScreen
-import com.example.madwellbeingapp.ui.screens.LandingScreen
+import com.example.madwellbeingapp.ui.screens.ManageActivitiesScreen
 import com.example.madwellbeingapp.ui.theme.MadWellbeingAppTheme
 import com.example.madwellbeingapp.ui.viewmodel.HabitViewModel
 
@@ -32,9 +32,9 @@ class MainActivity : ComponentActivity() {
 
 // ── Screen destinations ─────────────────────────────────────
 sealed class Screen {
-    data object Landing : Screen()
-    data object AllActivities : Screen()
     data object Home : Screen()
+    data object AllActivities : Screen()
+    data object ManageActivities : Screen()
     data object ActiveOnly : Screen()
     data object Calendar : Screen()
     data object AddHabit : Screen()
@@ -44,7 +44,7 @@ sealed class Screen {
 
 @Composable
 fun HabitNavGraph(vm: HabitViewModel = viewModel()) {
-    val backStack = remember { mutableStateListOf<Any>(Screen.Landing) }
+    val backStack = remember { mutableStateListOf<Any>(Screen.Home) }
 
     fun nav(screen: Screen) = backStack.add(screen)
     fun back() { if (backStack.size > 1) backStack.removeLast() }
@@ -52,10 +52,10 @@ fun HabitNavGraph(vm: HabitViewModel = viewModel()) {
     NavDisplay(
         backStack = backStack,
         entryProvider = entryProvider {
-            entry<Screen.Landing> {
-                LandingScreen(
+            entry<Screen.Home> {
+                HomeScreen(
                     onAllActivities = { nav(Screen.AllActivities) },
-                    onManageActivities = { nav(Screen.Home) },
+                    onManageActivities = { nav(Screen.ManageActivities) },
                     onActiveOnly = { nav(Screen.ActiveOnly) },
                     onCalendar = { nav(Screen.Calendar) }
                 )
@@ -63,8 +63,8 @@ fun HabitNavGraph(vm: HabitViewModel = viewModel()) {
             entry<Screen.AllActivities> {
                 AllActivitiesScreen(vm, onNavigateBack = ::back, onHabitClick = { nav(Screen.HabitDetail(it)) })
             }
-            entry<Screen.Home> {
-                HomeScreen(vm, onAddHabit = { nav(Screen.AddHabit) }, onHabitClick = { nav(Screen.HabitDetail(it)) }, onNavigateBack = ::back)
+            entry<Screen.ManageActivities> {
+                ManageActivitiesScreen(vm, onAddHabit = { nav(Screen.AddHabit) }, onHabitClick = { nav(Screen.HabitDetail(it)) }, onNavigateBack = ::back)
             }
             entry<Screen.ActiveOnly> {
                 ActiveOnlyScreen(vm, onNavigateBack = ::back, onHabitClick = { nav(Screen.HabitDetail(it)) })
