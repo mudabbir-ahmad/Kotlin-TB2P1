@@ -132,7 +132,7 @@ fun AddEditHabitScreen(
                     } else {
                         viewModel.addActivityType(newTypeName) { success ->
                             if (success) {
-                                selectedActivityName = HabitViewModel.toTitleCase(newTypeName.trim())
+                                selectedActivityName = HabitViewModel.formatName(newTypeName.trim())
                                 nameError = false
                                 showAddTypeDialog = false
                             } else {
@@ -265,10 +265,10 @@ fun AddEditHabitScreen(
                 // Live preview
                 if (selectedActivityName.isNotBlank()) {
                     val previewName = if (details.isBlank())
-                        HabitViewModel.toTitleCase(selectedActivityName.trim())
+                        HabitViewModel.formatName(selectedActivityName.trim())
                     else
-                        HabitViewModel.toTitleCase(selectedActivityName.trim()) +
-                                "(" + HabitViewModel.toTitleCase(details.trim()) + ")"
+                        HabitViewModel.formatName(selectedActivityName.trim()) +
+                                "(" + HabitViewModel.formatDetails(details.trim()) + ")"
                     Text("Will display as: $previewName",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,

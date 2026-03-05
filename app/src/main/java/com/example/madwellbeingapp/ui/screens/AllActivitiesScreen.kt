@@ -197,7 +197,7 @@ private fun AllActivitiesSwipeCard(
                             }
                         }
                         Text(
-                            habit.activityType + "  •  ${habit.targetFrequency}x/week",
+                            "${habit.targetFrequency}x / week",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha)
                         )

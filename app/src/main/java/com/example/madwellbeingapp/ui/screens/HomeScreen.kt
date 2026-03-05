@@ -21,7 +21,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,14 +54,11 @@ fun HomeScreen(
     val completedIds = todayLogs.filter { it.completed }.map { it.habitId }.toSet()
     val activeHabits = habits.filter { it.isActive }
 
-    // Toggle between "Week" and "Month" view for the progress dropdown
-    var showMonth by remember { mutableStateOf(false) }
-
     Scaffold { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ScreenHeader(title = "Manage Activities", onBack = onNavigateBack)
 
-            // Summary bar
+            // Summary bar – today only
             Column(
                 modifier = Modifier.fillMaxWidth()
                     .background(MaterialTheme.colorScheme.primaryContainer)
@@ -80,25 +76,6 @@ fun HomeScreen(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                // Week / Month toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        if (showMonth) "Showing: Month" else "Showing: Week",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    TextButton(onClick = { showMonth = !showMonth }) {
-                        Text(
-                            if (showMonth) "Switch to Week ▲" else "Expand to Month ▼",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
             }
 
             if (activeHabits.isEmpty()) {
@@ -127,8 +104,7 @@ fun HomeScreen(
                             onSwipeRight = { viewModel.toggleTodayLog(habit.id) },
                             onSwipeLeft = { viewModel.disableHabit(habit) },
                             onClick = { onHabitClick(habit.id) },
-                            viewModel = viewModel,
-                            showMonth = showMonth
+                            viewModel = viewModel
                         )
                     }
                 }
@@ -151,17 +127,13 @@ fun HomeScreen(
  * Habit card:
  *  • swipe left→right = mark complete (or undo)
  *  • swipe right→left = disable
- *  • streak counter (✓ per consecutive day) replaces the old − button
+ *  • streak counter (✓ per consecutive day)
  */
 @Composable
 private fun SwipeHabitCard(
     habit: Habit, completed: Boolean, onSwipeRight: () -> Unit,
-    onSwipeLeft: () -> Unit, onClick: () -> Unit, viewModel: HabitViewModel,
-    showMonth: Boolean
+    onSwipeLeft: () -> Unit, onClick: () -> Unit, viewModel: HabitViewModel
 ) {
-    val progress by (if (showMonth) viewModel.monthlyProgress(habit.id)
-    else viewModel.weeklyProgress(habit.id)).collectAsState(initial = 0f)
-
     // Streak counter
     var streak by remember { mutableIntStateOf(0) }
     LaunchedEffect(habit.id, completed) {
@@ -241,13 +213,8 @@ private fun SwipeHabitCard(
                         Text(habit.displayName, style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold)
                         Text(
-                            habit.activityType + "  •  ${habit.targetFrequency}x/week",
+                            "${habit.targetFrequency}x / week",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "${if (showMonth) "Monthly" else "Weekly"}: ${(progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

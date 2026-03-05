@@ -5,9 +5,9 @@ import androidx.room.PrimaryKey
 
 /**
  * Represents a habit tracked by the user.
- * [name] is the activity type name chosen from the user-created dropdown (e.g. "Gym").
- * [details] is optional extra info typed by the user (e.g. "Legs", "5K").
- * The display name combines them: "Gym(Legs)" when details is present, or just "Gym".
+ * [name] is the activity type name in FULL CAPS (e.g. "GYM").
+ * [details] is optional extra info with first-char uppercase (e.g. "Legs", "5k").
+ * The display name combines them: "GYM(Legs)" when details is present, or just "GYM".
  */
 @Entity(tableName = "habits")
 data class Habit(
@@ -22,7 +22,13 @@ data class Habit(
     val reminderMinute: Int = 0,
     val isActive: Boolean = true
 ) {
-    /** Returns the formatted display name: "Name(Details)" or just "Name". */
+    /** Returns the formatted display name: "NAME(Details)" or just "NAME". */
     val displayName: String
-        get() = if (details.isBlank()) name else "$name($details)"
+        get() {
+            val upperName = name.uppercase()
+            if (details.isBlank()) return upperName
+            val formattedDetails = if (details.length <= 1) details.uppercase()
+            else details[0].uppercaseChar() + details.substring(1).lowercase()
+            return "$upperName($formattedDetails)"
+        }
 }

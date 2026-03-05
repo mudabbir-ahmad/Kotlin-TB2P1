@@ -17,8 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -81,9 +79,6 @@ fun HabitCard(
     badge: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null
 ) {
-    val weeklyProgress by viewModel.weeklyProgress(habit.id)
-        .collectAsState(initial = 0f)
-
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -127,15 +122,9 @@ fun HabitCard(
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = habit.activityType + "  •  ${habit.targetFrequency}x/week",
+                    text = "${habit.targetFrequency}x / week",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Weekly: ${(weeklyProgress * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f * contentAlpha)
                 )
             }
 

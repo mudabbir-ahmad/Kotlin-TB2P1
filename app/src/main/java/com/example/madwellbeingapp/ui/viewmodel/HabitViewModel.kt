@@ -29,30 +29,29 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         /**
-         * Converts text to title-case: lowercase everything, then uppercase
-         * the first letter of each word. Handles parentheses properly so
-         * "GYM(LEGS)" → "Gym(Legs)" and "gym(legs)" → "Gym(Legs)".
+         * Formats the activity name: FULL CAPS for the main name.
+         * e.g. "gym" → "GYM", "running" → "RUNNING"
+         */
+        fun formatName(input: String): String {
+            return input.trim().uppercase()
+        }
+
+        /**
+         * Formats the details/type text: first character uppercase, rest lowercase.
+         * e.g. "LEGS" → "Legs", "upper body" → "Upper body"
+         */
+        fun formatDetails(input: String): String {
+            val trimmed = input.trim()
+            if (trimmed.isBlank()) return trimmed
+            return trimmed[0].uppercaseChar() + trimmed.substring(1).lowercase()
+        }
+
+        /**
+         * Legacy helper – kept for activity type names which use title-case.
+         * Converts text so first character is uppercase, rest lowercase.
          */
         fun toTitleCase(input: String): String {
-            if (input.isBlank()) return input
-            val sb = StringBuilder()
-            var capitalizeNext = true
-            for (ch in input) {
-                when {
-                    ch == '(' || ch == ')' || ch == ' ' || ch == '-' -> {
-                        sb.append(ch)
-                        capitalizeNext = true
-                    }
-                    capitalizeNext -> {
-                        sb.append(ch.uppercaseChar())
-                        capitalizeNext = false
-                    }
-                    else -> {
-                        sb.append(ch.lowercaseChar())
-                    }
-                }
-            }
-            return sb.toString()
+            return formatDetails(input)
         }
     }
 
@@ -65,7 +64,7 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun addActivityType(name: String, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            val formatted = toTitleCase(name.trim())
+            val formatted = formatName(name.trim())
             if (formatted.isBlank()) {
                 onResult(false)
                 return@launch
@@ -179,18 +178,6 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ── Monthly progress for a habit ────────────────────────
-    fun monthlyProgress(habitId: Int): Flow<Float> {
-        return repository.getLogsForHabit(habitId).map { logs ->
-            val monthAgo = todayStart - 29 * 86_400_000L
-            val thisMonthCount = logs.count { it.completed && it.date >= monthAgo }
-            val habit = repository.getHabitByIdOnce(habitId)
-            val weeklyTarget = habit?.targetFrequency ?: 7
-            val monthlyTarget = (weeklyTarget * 4.3).toInt().coerceAtLeast(1)
-            (thisMonthCount.toFloat() / monthlyTarget).coerceIn(0f, 1f)
-        }
-    }
-
     // ── Duplicate check ─────────────────────────────────────
     suspend fun isDuplicate(name: String, details: String, excludeId: Int? = null): Boolean {
         val existing = repository.findDuplicate(name.trim(), details.trim())
@@ -210,9 +197,9 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
         onResult: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
-            val formattedName = toTitleCase(name.trim())
-            val formattedDetails = toTitleCase(details.trim())
-            val formattedType = toTitleCase(activityType.trim())
+            val formattedName = formatName(name.trim())
+            val formattedDetails = formatDetails(details.trim())
+            val formattedType = formatName(activityType.trim())
 
             if (isDuplicate(formattedName, formattedDetails)) {
                 onResult(false)
@@ -237,9 +224,9 @@ class HabitViewModel(application: Application) : AndroidViewModel(application) {
     fun updateHabit(habit: Habit) {
         viewModelScope.launch {
             val updated = habit.copy(
-                name = toTitleCase(habit.name.trim()),
-                details = toTitleCase(habit.details.trim()),
-                activityType = toTitleCase(habit.activityType.trim())
+                name = formatName(habit.name.trim()),
+                details = formatDetails(habit.details.trim()),
+                activityType = formatName(habit.activityType.trim())
             )
             repository.updateHabit(updated)
         }

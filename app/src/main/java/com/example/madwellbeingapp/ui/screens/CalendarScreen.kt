@@ -295,7 +295,7 @@ private fun StreakCard(habit: Habit, streak: Int, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(habit.displayName, style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold)
-                Text(habit.activityType + " • ${habit.targetFrequency}x/week",
+                Text("${habit.targetFrequency}x / week",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

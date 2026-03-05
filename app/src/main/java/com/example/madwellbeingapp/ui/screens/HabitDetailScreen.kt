@@ -24,9 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +50,6 @@ fun HabitDetailScreen(
     val todayLogs by viewModel.todayLogs.collectAsState()
     val isCompletedToday = todayLogs.any { it.habitId == habitId && it.completed }
 
-    var showMonth by remember { mutableStateOf(false) }
 
 
     Scaffold { padding ->
@@ -124,32 +120,18 @@ fun HabitDetailScreen(
                         Modifier.weight(1f))
                 }
 
-                // Weekly/Monthly progress with toggle
+                // Weekly progress
                 Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                if (showMonth) "Monthly Progress" else "Weekly Progress",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            TextButton(onClick = { showMonth = !showMonth }) {
-                                Text(
-                                    if (showMonth) "Week ▲" else "Month ▼",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                        val detailProgress by (if (showMonth) viewModel.monthlyProgress(habitId)
-                        else viewModel.weeklyProgress(habitId)).collectAsState(initial = 0f)
                         Text(
-                            "${(detailProgress * 100).toInt()}% of ${if (showMonth) "monthly" else "weekly"} goal",
+                            "Weekly Progress",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        val detailProgress by viewModel.weeklyProgress(habitId)
+                            .collectAsState(initial = 0f)
+                        Text(
+                            "${(detailProgress * 100).toInt()}% of weekly goal",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
